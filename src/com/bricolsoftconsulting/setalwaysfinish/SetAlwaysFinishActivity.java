@@ -16,12 +16,12 @@ Copyright 2011 Bricolsoft Consulting
 
 package com.bricolsoftconsulting.setalwaysfinish;
 
-import java.lang.reflect.Method;
-
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.appwidget.AppWidgetManager;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.DialogInterface;
-
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
@@ -29,7 +29,10 @@ import android.provider.Settings;
 import android.util.Log;
 import android.view.View;
 import android.widget.CheckBox;
+import android.widget.RemoteViews;
 import android.widget.Toast;
+
+import java.lang.reflect.Method;
 
 public class SetAlwaysFinishActivity extends Activity {
     private static final String LOG_TAG = "SetAlwaysFinishActivity";
@@ -62,6 +65,14 @@ public class SetAlwaysFinishActivity extends Activity {
             methodSetAlwaysFinish.invoke(objectInstance, new Object[]{mAlwaysFinish});
         } catch (Exception ex) {
             showAlert("Could not set always finish:\n\n" + ex, "Error");
+            return;
+        }
+        // A successful invoke will trigger a widget update
+        ComponentName thisWidget = new ComponentName(this, WidgetProvider.class);
+        AppWidgetManager manager = AppWidgetManager.getInstance(this);
+        for (int widgetId : manager.getAppWidgetIds(thisWidget)) {
+            final RemoteViews views = WidgetProvider.buildWidget(this, mAlwaysFinish);
+            manager.updateAppWidget(widgetId, views);
         }
     }
     
@@ -115,12 +126,16 @@ public class SetAlwaysFinishActivity extends Activity {
         Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
     }
 
+    public static boolean GetAlwaysFinish(Context context) {
+        return Settings.System.getInt(context.getContentResolver(), Settings.System.ALWAYS_FINISH_ACTIVITIES, 0) != 0;
+    }
+
     /*
       * Gets the latest AlwaysFinish value from the system and
       * updates the checkbox
       */
     private void updateFinishOptions() {
-        mAlwaysFinish = Settings.System.getInt(getContentResolver(), Settings.System.ALWAYS_FINISH_ACTIVITIES, 0) != 0;
+        mAlwaysFinish = GetAlwaysFinish(this);
         if (mAlwaysFinishCB != null) {
             mAlwaysFinishCB.setChecked(mAlwaysFinish);
         }
